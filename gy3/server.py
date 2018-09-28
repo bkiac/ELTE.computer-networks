@@ -2,7 +2,7 @@ import socket
 import sys
 
 server = socket.socket() # default TCP
-server_address = ('localhost', sys.argv[1])
+server_address = ('localhost', int(sys.argv[1]))
 server.bind(server_address)
 server.listen(1) # only 1 client
 

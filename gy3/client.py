@@ -3,7 +3,7 @@ import sys
 
 client = socket.socket()
 
-server_address = ('localhost', sys.argv[1])
+server_address = ('localhost', int(sys.argv[1]))
 client.connect(server_address)
 
 client.sendall('Hello server')
