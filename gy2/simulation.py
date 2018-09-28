@@ -85,3 +85,5 @@ for i in range(duration):
             if available_circuit is not None:
                 demand["circuit-in-use"] = available_circuit
                 build_flow(available_circuit, demand["start-time"])
+            else:
+                print "foglalas: " + demand["end-points"][0] + "<->" + demand["end-points"][1] + " - sikertelen"
