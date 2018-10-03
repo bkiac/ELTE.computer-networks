@@ -26,7 +26,7 @@ system = platform.system()
 with open("top-1m.csv", "r") as f:
     reader = csv.reader(f, delimiter=",")
     websites_from_csv = list(reader)
-websites = map(lambda i: i[1], websites_from_csv[:first_n]) + map(lambda i: i[1], websites_from_csv[-last_n:])
+websites = [w[1] for w in websites_from_csv[:first_n]] + [w[1] for w in websites_from_csv[-last_n:]]
 
 ## Init stats
 traceroute_stats = {
