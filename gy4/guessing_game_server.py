@@ -1,10 +1,17 @@
 import select
 import socket
 import sys
+import random
+import struct
+import operator
 
 
 class GuessingGameServer:
-    def __init__(self, addr='localhost', port=10001, timeout=1):
+    def __init__(self, addr='localhost', port=8801, timeout=1):
+        self.number = random.randint(1, 100)
+        print 'n =', self.number
+        self.has_game_ended = False
+
         self.server = self.setup_server(addr, port)
         # Sockets from which we expect to read
         self.inputs = [self.server]
@@ -25,21 +32,24 @@ class GuessingGameServer:
         server.listen(5)
         return server
 
-    def handle_new_connection(self, sock):
-        # A "readable" server socket is ready to accept a connection
-        connection, client_address = sock.accept()
-        connection.setblocking(0)  # or connection.settimeout(1.0)
-        self.inputs.append(connection)
+    def handle_connections(self):
+        while len(self.inputs) > 1 or not self.has_game_ended:
+            readable, writable, exceptional = select.select(
+                self.inputs, [], self.inputs, self.timeout
+            )
 
-    def handle_data_from_client(self, sock):
-        data = sock.recv(1024)
-        data = data.strip()
-        if data:
-            print data
-            sock.sendall('OK')
-        else:
-            # Interpret empty result as closed connection
-            print >>sys.stderr, 'closing', sock.getpeername(), 'after reading no data'
+            if not (readable or writable or exceptional):
+                #print >>sys.stderr, '  timed out, do some other work here'
+                continue
+
+            self.handle_inputs(readable)
+            self.handle_exception(exceptional)
+
+        print 'The game has ended.'
+
+    def handle_exception(self, exceptional):
+        for sock in exceptional:
+            print >>sys.stderr, 'handling exceptional condition for', sock.getpeername()
             # Stop listening for input on the connection
             self.inputs.remove(sock)
             sock.close()
@@ -51,31 +61,47 @@ class GuessingGameServer:
             else:
                 self.handle_data_from_client(sock)
 
-    def handle_exception(self, exceptional):
-        for sock in exceptional:
-            print >>sys.stderr, 'handling exceptional condition for', sock.getpeername()
+    def handle_new_connection(self, sock):
+        # A "readable" server socket is ready to accept a connection
+        connection, client_address = sock.accept()
+        connection.setblocking(0)  # or connection.settimeout(1.0)
+        self.inputs.append(connection)
+
+    def handle_data_from_client(self, sock):
+        data = sock.recv(1024)
+        data = data.strip()
+        if data:
+            message = self.check_guess(data)
+            sock.sendall(message)
+        else:
+            # Interpret empty result as closed connection
+            print >>sys.stderr, 'closing', sock.getpeername(), 'after reading no data'
             # Stop listening for input on the connection
             self.inputs.remove(sock)
             sock.close()
 
-    def handle_connections(self):
-        while self.inputs:
-            try:
-                readable, writable, exceptional = select.select(
-                    self.inputs, [], self.inputs, self.timeout)
+    def check_guess(self, packed_data):
+        if self.has_game_ended:
+            return 'end'
 
-                if not (readable or writable or exceptional):
-                    #print >>sys.stderr, '  timed out, do some other work here'
-                    continue
+        ops = {'<': operator.lt, '>': operator.gt, '=': operator.eq}
+        res = {True: 'yes', False: 'no'}
 
-                self.handle_inputs(readable)
-                self.handle_exception(exceptional)
-            except KeyboardInterrupt:
-                print 'Close the system'
-                for c in self.inputs:
-                    c.close()
-                self.inputs = []
+        unpacker = struct.Struct('cH')
+        unpacked_data = unpacker.unpack(packed_data)
+
+        op = unpacked_data[0]
+        if op == '=':
+            guess_result = ops[op](self.number, unpacked_data[1])
+            if guess_result:
+                self.has_game_ended = True
+                return 'win'
+            else:
+                return 'no'
+        else:
+            guess_result = ops[op](self.number, unpacked_data[1])
+            return res[guess_result]
 
 
 GUESSING_GAME_SERVER = GuessingGameServer()
-GUESSING_GAME_SERVER.handleConnections()
+GUESSING_GAME_SERVER.handle_connections()

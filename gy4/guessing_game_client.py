@@ -1,9 +1,10 @@
 import socket
 import sys
+import struct
 
 
 class GuessingGameClient:
-    def __init__(self, server_addr='localhost', server_port=10001):
+    def __init__(self, server_addr='localhost', server_port=8801):
         self.setup_client(server_addr, server_port)
 
     def setup_client(self, server_addr, server_port):
@@ -15,23 +16,35 @@ class GuessingGameClient:
         # Connect the socket to the port where the server is listening
         self.client.connect(server_address)
 
+    def handle_connection(self):
+        while True:
+            # '> n' OR '< n' OR '= n'
+            msg = raw_input('Guess: ')
+            if msg != '':
+                msg = self.pack_guess(msg)
+                self.client.sendall(msg)
+            self.handle_data_from_server()
+
+    def pack_guess(self, guess):
+        packer = struct.Struct('cH')
+
+        unpacked_data = guess.split(' ')
+        packed_data = packer.pack(unpacked_data[0], int(unpacked_data[1]))
+
+        return packed_data
+
+
     def handle_data_from_server(self):
         data = self.client.recv(4096)
         if not data:
-            print '\nDisconnected from server'
+            print 'The game has already ended.'
+            sys.exit()
+        elif data == 'win' or data == 'end':
+            print data
             sys.exit()
         else:
             print data
 
-    def handle_connection(self):
-        while True:
-            msg = raw_input('Message: ')
-            if msg != '':
-                msg = msg.strip()
-                self.client.send(msg)
-            self.handle_data_from_server()
-
 
 GUESSING_GAME_CLIENT = GuessingGameClient()
 GUESSING_GAME_CLIENT.handle_connection()
-
