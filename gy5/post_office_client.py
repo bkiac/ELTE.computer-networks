@@ -7,7 +7,6 @@ class PostOfficeClient:
         self.name = client_name
         self.server_address = (server_ip, server_port)
         self.client = self.setup_client()
-
         self.login_client()
 
     def setup_client(self):
