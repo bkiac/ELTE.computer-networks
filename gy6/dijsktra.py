@@ -77,8 +77,9 @@ class Dijkstra:
                     self.queue[adjacent_point] = path_weight
 
             print 'Iteration:', counter
-            print [point for point, ready in self.ready.items() if ready]
-            print sorted(self.distance.items(), key=lambda pd: pd[1])
+            print 'ready:', [point for point, ready in self.ready.items() if ready]
+            print 'prev: ', [(prev, point) for point, prev in self.previous.items()]
+            print 'dist: ', sorted(self.distance.items(), key=lambda pd: pd[1])
             print
 
 
